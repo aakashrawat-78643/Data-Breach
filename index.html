@@ -191,21 +191,22 @@
     resultDiv.innerHTML = "";
     loader.style.display = "block";
 
-    // This is the most reliable proxy for 2026
+    // AllOrigins is good, but we use the 'https' version strictly
     const apiTarget = `https://api.xposedornot.com/v1/check-email/${email}`;
     const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(apiTarget)}`;
 
     try {
         const response = await fetch(proxyUrl);
+        if (!response.ok) throw new Error("Proxy reached, but it returned an error.");
+        
         const wrapper = await response.json();
-        
-        // AllOrigins wraps the API response inside 'contents'
-        // We need to parse that 'contents' string into JSON
-        const status = wrapper.status.http_code;
-        
         loader.style.display = "none";
 
-        if (status === 200) {
+        // IMPORTANT: AllOrigins status check
+        const httpStatus = wrapper.status ? wrapper.status.http_code : null;
+
+        if (httpStatus === 200) {
+            // Success: Email is breached
             const data = JSON.parse(wrapper.contents);
             const breaches = data.breaches[0];
 
@@ -213,15 +214,18 @@
             breaches.forEach(b => {
                 resultDiv.innerHTML += `<div class="breach-item">🚩 Found in: ${b}</div>`;
             });
-        } else if (status === 404) {
-            resultDiv.innerHTML = `<p class="safe">✅ Great news! No breaches found.</p>`;
+        } else if (httpStatus === 404) {
+            // Success: Email is safe
+            resultDiv.innerHTML = `<p class="safe">✅ Great news! No breaches found for this email.</p>`;
         } else {
-            resultDiv.innerHTML = `<p style="color:orange">API busy or Limit reached. Try again later.</p>`;
+            // Something else happened
+            resultDiv.innerHTML = `<p style="color:orange">Database busy or invalid email. Try again.</p>`;
         }
     } catch (error) {
         loader.style.display = "none";
-        console.error("Detailed Error:", error);
-        resultDiv.innerHTML = `<p style="color:red">Connection error. Please ensure you are using HTTPS on GitHub Pages.</p>`;
+        console.error("Debug Info:", error);
+        // This is usually triggered if the proxy itself is blocked by your browser/network
+        resultDiv.innerHTML = `<p style="color:red">Network Blocked. If on GitHub, ensure you are using 'https://' in the URL.</p>`;
     }
 }
     </script>
@@ -229,4 +233,5 @@
 
 
 </html>
+
 
