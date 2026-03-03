@@ -186,87 +186,80 @@
 
 // --- 2. FIXED API INTEGRATION ---
 function checkBreach() {
-    const email = document.getElementById('emailInput').value.trim();
-    const resultDiv = document.getElementById('result');
-    const loader = document.getElementById('loader');
-    const apiKey = "72d00d56ef994fcdb043d0ec0d1de7cd"; 
+        const email = document.getElementById('emailInput').value.trim();
+        const resultDiv = document.getElementById('result');
+        const loader = document.getElementById('loader');
+        const apiKey = "72d00d56ef994fcdb043d0ec0d1de7cd"; 
 
-    if (!email) return alert("Please enter an email!");
+        if (!email) return alert("Please enter an email!");
 
-    // UI Reset
-    resultDiv.innerHTML = "";
-    loader.style.display = "block";
+        resultDiv.innerHTML = "";
+        loader.style.display = "block";
 
-    const url = `https://emailreputation.abstractapi.com/v1/?api_key=${apiKey}&email=${email}`;
+        const url = `https://emailreputation.abstractapi.com/v1/?api_key=${apiKey}&email=${email}`;
+        const xmlHttp = new XMLHttpRequest();
+        xmlHttp.timeout = 10000; 
 
-    const xmlHttp = new XMLHttpRequest();
-    
-    // Set a timeout of 10 seconds so it doesn't load forever
-    xmlHttp.timeout = 10000; 
-
-    xmlHttp.onreadystatechange = function() {
-        if (xmlHttp.readyState === 4) {
-            loader.style.display = "none"; // Always hide loader when done
-            
-            if (xmlHttp.status === 200) {
-                try {
-                    const data = JSON.parse(xmlHttp.responseText);
-                    renderResponse(data, resultDiv);
-                } catch (e) {
-                    resultDiv.innerHTML = `<p style="color:orange">Data error. The API sent back something unreadable.</p>`;
+        xmlHttp.onreadystatechange = function() {
+            if (xmlHttp.readyState === 4) {
+                loader.style.display = "none";
+                if (xmlHttp.status === 200) {
+                    try {
+                        const data = JSON.parse(xmlHttp.responseText);
+                        renderResponse(data, resultDiv, email); // Passing input email as fallback
+                    } catch (e) {
+                        resultDiv.innerHTML = `<p style="color:orange">Data processing error.</p>`;
+                    }
+                } else {
+                    resultDiv.innerHTML = `<p style="color:red">Server Error: ${xmlHttp.status}</p>`;
                 }
-            } else if (xmlHttp.status === 0) {
-                resultDiv.innerHTML = `<p style="color:red">Network Blocked. Check your internet or Firewall.</p>`;
-            } else {
-                resultDiv.innerHTML = `<p style="color:red">Server Error: ${xmlHttp.status}.</p>`;
             }
+        };
+        xmlHttp.open("GET", url, true);
+        xmlHttp.send(null);
+    }
+
+    function renderResponse(data, container, inputEmail) {
+        // Fallback to inputEmail if data.email is undefined
+        const displayEmail = data.email || inputEmail;
+        
+        // Ensure reputation_score is a number, default to 0 if missing
+        const rawScore = data.reputation_score !== undefined ? data.reputation_score : 0;
+        let score = (rawScore * 100).toFixed(0);
+        
+        let color = score > 70 ? '#4ade80' : (score > 40 ? '#facc15' : '#f87171');
+
+        let html = `<h4>Security Report: ${displayEmail}</h4>`;
+        html += `<div style="font-size: 1.2rem; margin: 15px 0;">Safety Score: <span style="color:${color}">${score}%</span></div>`;
+
+        // Helper function to check nested .value or direct boolean
+        const checkFlag = (field) => {
+            if (!field) return false;
+            return typeof field === 'object' ? field.value : field;
+        };
+
+        if (checkFlag(data.is_disposable_email)) {
+            html += `<div class="breach-item">🚩 Disposable/Temporary Email</div>`;
         }
-    };
+        if (checkFlag(data.is_known_spammer)) {
+            html += `<div class="breach-item">🚩 WARNING: Known Spammer</div>`;
+        }
+        if (checkFlag(data.is_blacklisted)) {
+            html += `<div class="breach-item">🚩 WARNING: Blacklisted Email</div>`;
+        }
 
-    xmlHttp.ontimeout = function () {
-        loader.style.display = "none";
-        resultDiv.innerHTML = `<p style="color:orange">Request timed out. The server is taking too long.</p>`;
-    };
+        if (score >= 90) {
+            html += `<p class="safe">✅ This email appears highly secure.</p>`;
+        }
 
-    xmlHttp.open("GET", url, true);
-    xmlHttp.send(null);
-}
-
-function renderResponse(data, container) {
-    if (!data.email) {
-        container.innerHTML = "<p>No data found for this email.</p>";
-        return;
+        container.innerHTML = html;
     }
-
-    let score = (data.reputation_score * 100).toFixed(0);
-    let color = score > 70 ? '#4ade80' : (score > 40 ? '#facc15' : '#f87171');
-
-    // Building the HTML string
-    let html = `<h4>Security Report: ${data.email}</h4>`;
-    html += `<div style="font-size: 1.2rem; margin: 15px 0;">Safety Score: <span style="color:${color}">${score}%</span></div>`;
-
-    // Check the values correctly (they are often objects {value: true/false})
-    if (data.is_disposable_email && data.is_disposable_email.value) {
-        html += `<div class="breach-item">🚩 Disposable/Temporary Email</div>`;
-    }
-    if (data.is_known_spammer && data.is_known_spammer.value) {
-        html += `<div class="breach-item">🚩 WARNING: Known Spammer</div>`;
-    }
-    if (data.is_blacklisted && data.is_blacklisted.value) {
-        html += `<div class="breach-item">🚩 WARNING: Blacklisted Email</div>`;
-    }
-
-    if (score >= 90) {
-        html += `<p class="safe">✅ No immediate threats detected.</p>`;
-    }
-
-    container.innerHTML = html;
-}
     </script>
 </body>
 
 
 </html>
+
 
 
 
