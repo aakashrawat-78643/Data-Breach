@@ -181,12 +181,10 @@
         animate();
 
         // --- 2. API INTEGRATION (LEAKCHECK) ---
-        async function checkBreach() {
+        function checkBreach() {
     const email = document.getElementById('emailInput').value.trim();
     const resultDiv = document.getElementById('result');
     const loader = document.getElementById('loader');
-
-    // Get this from your Abstract API Dashboard
     const apiKey = "72d00d56ef994fcdb043d0ec0d1de7cd"; 
 
     if (!email) return alert("Please enter an email!");
@@ -194,40 +192,43 @@
     resultDiv.innerHTML = "";
     loader.style.display = "block";
 
-    // This is the Reputation API URL from your screenshot
     const url = `https://emailreputation.abstractapi.com/v1/?api_key=${apiKey}&email=${email}`;
 
-    try {
-        const response = await fetch(url);
-        const data = await response.json();
-        
-        loader.style.display = "none";
+    const xmlHttp = new XMLHttpRequest();
+    xmlHttp.onreadystatechange = function() {
+        if (xmlHttp.readyState === 4) {
+            loader.style.display = "none";
+            if (xmlHttp.status === 200) {
+                const data = JSON.parse(xmlHttp.responseText);
+                
+                // UI Logic
+                let score = (data.reputation_score * 100).toFixed(0);
+                let color = score > 70 ? '#4ade80' : (score > 40 ? '#facc15' : '#f87171');
 
-        if (data.email) {
-            let score = (data.reputation_score * 100).toFixed(0);
-            let color = score > 70 ? '#4ade80' : (score > 40 ? '#facc15' : '#f87171');
-
-            resultDiv.innerHTML = `
-                <h4>Security Report: ${data.email}</h4>
-                <div style="font-size: 1.2rem; margin: 15px 0;">
-                    Safety Score: <span style="color:${color}">${score}%</span>
-                </div>
-                ${data.is_disposable_email.value ? '<div class="breach-item">🚩 Disposable/Temporary Email detected.</div>' : ''}
-                ${data.is_known_spammer.value ? '<div class="breach-item">🚩 WARNING: Known Spammer.</div>' : ''}
-                ${data.is_blacklisted.value ? '<div class="breach-item">🚩 WARNING: This email is Blacklisted.</div>' : ''}
-                ${score >= 90 ? '<p class="safe">✅ No immediate threats found.</p>' : ''}
-            `;
+                resultDiv.innerHTML = `
+                    <h4>Security Report: ${data.email}</h4>
+                    <div style="font-size: 1.2rem; margin: 15px 0;">
+                        Safety Score: <span style="color:${color}">${score}%</span>
+                    </div>
+                    ${data.is_disposable_email.value ? '<div class="breach-item">🚩 Disposable/Temporary Email detected.</div>' : ''}
+                    ${data.is_known_spammer.value ? '<div class="breach-item">🚩 WARNING: Known Spammer.</div>' : ''}
+                    ${data.is_blacklisted.value ? '<div class="breach-item">🚩 WARNING: This email is Blacklisted.</div>' : ''}
+                    ${score >= 90 ? '<p class="safe">✅ No immediate threats found.</p>' : ''}
+                `;
+            } else {
+                resultDiv.innerHTML = `<p style="color:red">Connection error. Please check your API key or network.</p>`;
+            }
         }
-    } catch (error) {
-        loader.style.display = "none";
-        resultDiv.innerHTML = `<p style="color:red">Connection error. Please check your API key.</p>`;
-    }
+    };
+    xmlHttp.open("GET", url, true);
+    xmlHttp.send(null);
 }
     </script>
 </body>
 
 
 </html>
+
 
 
 
