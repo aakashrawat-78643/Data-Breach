@@ -195,44 +195,42 @@ async function checkBreach() {
     resultDiv.innerHTML = "";
     loader.style.display = "block";
 
-    // This API specifically lists company names and breach details
+    // This API provides the historical list of hacked companies
     const targetUrl = `https://api.xposedornot.com/v1/check-email/${email}`;
-    // Using a more stable proxy for GitHub Pages
     const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
 
     try {
         const response = await fetch(proxyUrl);
         const wrapper = await response.json();
-        
         loader.style.display = "none";
 
-        // XposedOrNot status: 200 = Breached, 404 = Safe
         if (wrapper.status.http_code === 200) {
             const data = JSON.parse(wrapper.contents);
-            const breachList = data.breaches[0]; // This is the list of company names
+            const breachList = data.breaches[0]; // The array of company names
 
+            // Displaying the "Who and Where" of the breach
             resultDiv.innerHTML = `
-                <h4 style="color:#f87171">⚠️ Data Breach Detected!</h4>
-                <p style="margin-bottom:10px;">Your info was found in the following leaks:</p>
-                <div id="breachContainer"></div>
+                <h4 style="color:#f87171">⚠️ Data Breach Found!</h4>
+                <p style="font-size: 0.9rem; color: #94a3b8; margin-bottom: 10px;">
+                    Your data was leaked in the following breaches:
+                </p>
+                <div id="list"></div>
             `;
 
-            const container = document.getElementById('breachContainer');
+            const listContainer = document.getElementById('list');
             breachList.forEach(company => {
-                const item = document.createElement('div');
-                item.className = 'breach-item';
-                item.innerHTML = `🚩 <strong>${company}</strong>`;
-                container.appendChild(item);
+                const div = document.createElement('div');
+                div.className = 'breach-item';
+                div.innerHTML = `🚩 <strong>${company}</strong>`;
+                listContainer.appendChild(div);
             });
+
         } else if (wrapper.status.http_code === 404) {
-            resultDiv.innerHTML = `<p class="safe">✅ Great news! This email was not found in any major data breaches.</p>`;
-        } else {
-            resultDiv.innerHTML = `<p style="color:orange">API Busy. Please try again in 1 minute.</p>`;
+            resultDiv.innerHTML = `<p class="safe">✅ No breaches found for this email.</p>`;
         }
     } catch (error) {
         loader.style.display = "none";
-        console.error("Error:", error);
-        resultDiv.innerHTML = `<p style="color:red">Connection error. Please check your internet.</p>`;
+        resultDiv.innerHTML = `<p style="color:red">Connection Error. Check your internet.</p>`;
     }
 }
     </script>
@@ -240,6 +238,7 @@ async function checkBreach() {
 
 
 </html>
+
 
 
 
