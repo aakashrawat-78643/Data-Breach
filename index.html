@@ -191,34 +191,37 @@
     resultDiv.innerHTML = "";
     loader.style.display = "block";
 
-    // Use a robust, reliable proxy for GitHub Pages
-    const proxy = "https://corsproxy.io/?"; 
-    const targetUrl = `https://api.xposedornot.com/v1/check-email/${email}`;
+    // This is the most reliable proxy for 2026
+    const apiTarget = `https://api.xposedornot.com/v1/check-email/${email}`;
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(apiTarget)}`;
 
     try {
-        // We use encodeURIComponent to ensure the URL is passed correctly to the proxy
-        const response = await fetch(proxy + encodeURIComponent(targetUrl));
+        const response = await fetch(proxyUrl);
+        const wrapper = await response.json();
+        
+        // AllOrigins wraps the API response inside 'contents'
+        // We need to parse that 'contents' string into JSON
+        const status = wrapper.status.http_code;
         
         loader.style.display = "none";
 
-        // XposedOrNot status codes: 200 = Found, 404 = Safe
-        if (response.status === 200) {
-            const data = await response.json();
+        if (status === 200) {
+            const data = JSON.parse(wrapper.contents);
             const breaches = data.breaches[0];
 
             resultDiv.innerHTML = `<h4 style="color:#f87171">⚠️ Exposure Found!</h4>`;
             breaches.forEach(b => {
                 resultDiv.innerHTML += `<div class="breach-item">🚩 Found in: ${b}</div>`;
             });
-        } else if (response.status === 404) {
+        } else if (status === 404) {
             resultDiv.innerHTML = `<p class="safe">✅ Great news! No breaches found.</p>`;
         } else {
-            resultDiv.innerHTML = `<p style="color:orange">API is currently busy. Please try again in 1 minute.</p>`;
+            resultDiv.innerHTML = `<p style="color:orange">API busy or Limit reached. Try again later.</p>`;
         }
     } catch (error) {
         loader.style.display = "none";
-        console.error("Connection Error:", error);
-        resultDiv.innerHTML = `<p style="color:red">Error: Connection to security database failed. Please check your internet.</p>`;
+        console.error("Detailed Error:", error);
+        resultDiv.innerHTML = `<p style="color:red">Connection error. Please ensure you are using HTTPS on GitHub Pages.</p>`;
     }
 }
     </script>
@@ -226,3 +229,4 @@
 
 
 </html>
+
