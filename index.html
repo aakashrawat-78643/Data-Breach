@@ -185,90 +185,62 @@
 // [Existing animation code remains the same]
 
 // --- 2. FIXED API INTEGRATION ---
-function checkBreach() {
-        const email = document.getElementById('emailInput').value.trim();
-        const resultDiv = document.getElementById('result');
-        const loader = document.getElementById('loader');
-        const apiKey = "72d00d56ef994fcdb043d0ec0d1de7cd"; 
+async function checkBreach() {
+    const email = document.getElementById('emailInput').value.trim();
+    const resultDiv = document.getElementById('result');
+    const loader = document.getElementById('loader');
 
-        if (!email) return alert("Please enter an email!");
+    if (!email) return alert("Please enter an email!");
 
-        resultDiv.innerHTML = "";
-        loader.style.display = "block";
+    resultDiv.innerHTML = "";
+    loader.style.display = "block";
 
-        const url = `https://emailreputation.abstractapi.com/v1/?api_key=${apiKey}&email=${email}`;
-        const xmlHttp = new XMLHttpRequest();
-        xmlHttp.timeout = 10000; 
+    // This API specifically lists company names and breach details
+    const targetUrl = `https://api.xposedornot.com/v1/check-email/${email}`;
+    // Using a more stable proxy for GitHub Pages
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
 
-        xmlHttp.onreadystatechange = function() {
-            if (xmlHttp.readyState === 4) {
-                loader.style.display = "none";
-                if (xmlHttp.status === 200) {
-                    try {
-                        const data = JSON.parse(xmlHttp.responseText);
-                        renderResponse(data, resultDiv, email); // Passing input email as fallback
-                    } catch (e) {
-                        resultDiv.innerHTML = `<p style="color:orange">Data processing error.</p>`;
-                    }
-                } else {
-                    resultDiv.innerHTML = `<p style="color:red">Server Error: ${xmlHttp.status}</p>`;
-                }
-            }
-        };
-        xmlHttp.open("GET", url, true);
-        xmlHttp.send(null);
+    try {
+        const response = await fetch(proxyUrl);
+        const wrapper = await response.json();
+        
+        loader.style.display = "none";
+
+        // XposedOrNot status: 200 = Breached, 404 = Safe
+        if (wrapper.status.http_code === 200) {
+            const data = JSON.parse(wrapper.contents);
+            const breachList = data.breaches[0]; // This is the list of company names
+
+            resultDiv.innerHTML = `
+                <h4 style="color:#f87171">⚠️ Data Breach Detected!</h4>
+                <p style="margin-bottom:10px;">Your info was found in the following leaks:</p>
+                <div id="breachContainer"></div>
+            `;
+
+            const container = document.getElementById('breachContainer');
+            breachList.forEach(company => {
+                const item = document.createElement('div');
+                item.className = 'breach-item';
+                item.innerHTML = `🚩 <strong>${company}</strong>`;
+                container.appendChild(item);
+            });
+        } else if (wrapper.status.http_code === 404) {
+            resultDiv.innerHTML = `<p class="safe">✅ Great news! This email was not found in any major data breaches.</p>`;
+        } else {
+            resultDiv.innerHTML = `<p style="color:orange">API Busy. Please try again in 1 minute.</p>`;
+        }
+    } catch (error) {
+        loader.style.display = "none";
+        console.error("Error:", error);
+        resultDiv.innerHTML = `<p style="color:red">Connection error. Please check your internet.</p>`;
     }
-
-    function renderResponse(data, container, inputEmail) {
-    // If the API returns successfully but has no specific reputation data
-    if (!data || Object.keys(data).length === 0) {
-        container.innerHTML = `
-            <h4>Security Report: ${inputEmail}</h4>
-            <p class="safe">✅ No negative records found. This email appears to be clean and safe.</p>
-        `;
-        return;
-    }
-
-    const displayEmail = data.email || inputEmail;
-    const rawScore = data.reputation_score !== undefined ? data.reputation_score : 1; // Default to 1 (100%) if clean
-    let score = (rawScore * 100).toFixed(0);
-    
-    let color = score > 70 ? '#4ade80' : (score > 40 ? '#facc15' : '#f87171');
-
-    let html = `<h4>Security Report: ${displayEmail}</h4>`;
-    html += `<div style="font-size: 1.2rem; margin: 15px 0;">Safety Score: <span style="color:${color}">${score}%</span></div>`;
-
-    const checkFlag = (field) => {
-        if (!field) return false;
-        return typeof field === 'object' ? field.value : field;
-    };
-
-    let issuesFound = false;
-
-    if (checkFlag(data.is_disposable_email)) {
-        html += `<div class="breach-item">🚩 Disposable/Temporary Email</div>`;
-        issuesFound = true;
-    }
-    if (checkFlag(data.is_known_spammer)) {
-        html += `<div class="breach-item">🚩 WARNING: Known Spammer</div>`;
-        issuesFound = true;
-    }
-    if (checkFlag(data.is_blacklisted)) {
-        html += `<div class="breach-item">🚩 WARNING: Blacklisted Email</div>`;
-        issuesFound = true;
-    }
-
-    if (!issuesFound && score >= 70) {
-        html += `<p class="safe">✅ No immediate threats detected. This email has a good reputation.</p>`;
-    }
-
-    container.innerHTML = html;
 }
     </script>
 </body>
 
 
 </html>
+
 
 
 
