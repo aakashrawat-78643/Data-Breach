@@ -220,45 +220,56 @@ function checkBreach() {
     }
 
     function renderResponse(data, container, inputEmail) {
-        // Fallback to inputEmail if data.email is undefined
-        const displayEmail = data.email || inputEmail;
-        
-        // Ensure reputation_score is a number, default to 0 if missing
-        const rawScore = data.reputation_score !== undefined ? data.reputation_score : 0;
-        let score = (rawScore * 100).toFixed(0);
-        
-        let color = score > 70 ? '#4ade80' : (score > 40 ? '#facc15' : '#f87171');
-
-        let html = `<h4>Security Report: ${displayEmail}</h4>`;
-        html += `<div style="font-size: 1.2rem; margin: 15px 0;">Safety Score: <span style="color:${color}">${score}%</span></div>`;
-
-        // Helper function to check nested .value or direct boolean
-        const checkFlag = (field) => {
-            if (!field) return false;
-            return typeof field === 'object' ? field.value : field;
-        };
-
-        if (checkFlag(data.is_disposable_email)) {
-            html += `<div class="breach-item">🚩 Disposable/Temporary Email</div>`;
-        }
-        if (checkFlag(data.is_known_spammer)) {
-            html += `<div class="breach-item">🚩 WARNING: Known Spammer</div>`;
-        }
-        if (checkFlag(data.is_blacklisted)) {
-            html += `<div class="breach-item">🚩 WARNING: Blacklisted Email</div>`;
-        }
-
-        if (score >= 90) {
-            html += `<p class="safe">✅ This email appears highly secure.</p>`;
-        }
-
-        container.innerHTML = html;
+    // If the API returns successfully but has no specific reputation data
+    if (!data || Object.keys(data).length === 0) {
+        container.innerHTML = `
+            <h4>Security Report: ${inputEmail}</h4>
+            <p class="safe">✅ No negative records found. This email appears to be clean and safe.</p>
+        `;
+        return;
     }
+
+    const displayEmail = data.email || inputEmail;
+    const rawScore = data.reputation_score !== undefined ? data.reputation_score : 1; // Default to 1 (100%) if clean
+    let score = (rawScore * 100).toFixed(0);
+    
+    let color = score > 70 ? '#4ade80' : (score > 40 ? '#facc15' : '#f87171');
+
+    let html = `<h4>Security Report: ${displayEmail}</h4>`;
+    html += `<div style="font-size: 1.2rem; margin: 15px 0;">Safety Score: <span style="color:${color}">${score}%</span></div>`;
+
+    const checkFlag = (field) => {
+        if (!field) return false;
+        return typeof field === 'object' ? field.value : field;
+    };
+
+    let issuesFound = false;
+
+    if (checkFlag(data.is_disposable_email)) {
+        html += `<div class="breach-item">🚩 Disposable/Temporary Email</div>`;
+        issuesFound = true;
+    }
+    if (checkFlag(data.is_known_spammer)) {
+        html += `<div class="breach-item">🚩 WARNING: Known Spammer</div>`;
+        issuesFound = true;
+    }
+    if (checkFlag(data.is_blacklisted)) {
+        html += `<div class="breach-item">🚩 WARNING: Blacklisted Email</div>`;
+        issuesFound = true;
+    }
+
+    if (!issuesFound && score >= 70) {
+        html += `<p class="safe">✅ No immediate threats detected. This email has a good reputation.</p>`;
+    }
+
+    container.innerHTML = html;
+}
     </script>
 </body>
 
 
 </html>
+
 
 
 
