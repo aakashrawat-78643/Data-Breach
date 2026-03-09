@@ -5,7 +5,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Breach Shield | Leak Checker</title>
-    <script src="https://js.puter.com/v2/"></script>
     <style>
         * {
             margin: 0;
@@ -131,10 +130,10 @@
 
     <div class="glass-container">
         <h1>Breach Shield</h1>
-        <p>Check if your email has been compromised</p>
+        <p>Check if your password has been compromised</p>
 
         <div class="input-group">
-            <input type="email" id="emailInput" placeholder="Enter your email address...">
+            <input type="email" id="passwordInput" placeholder="Enter your email address...">
             <button onclick="checkBreach()">Check Security</button>
         </div>
 
@@ -181,71 +180,77 @@
         animate();
 
         // --- 2. API INTEGRATION (LEAKCHECK) ---
-        // --- 1. BOUNCING BALLS ANIMATION (Keep your existing canvas code) ---
-// [Existing animation code remains the same]
+        async function checkBreach() {
+            const password = document.getElementById('passwordInput').value;
+            const display = document.getElementById('result');
+            const loader = document.getElementById('loader'); // Get the loader
 
-// --- 2. FIXED API INTEGRATION ---
-async function checkBreach() {
-    const email = document.getElementById('emailInput').value.trim();
-    const resultDiv = document.getElementById('result');
-    const loader = document.getElementById('loader');
+            if (!password) {
+                display.style.color = "white";
+                display.innerText = "Please enter a password first.";
+                return;
+            }
 
-    if (!email) return alert("Please enter an email!");
+            // Show loader, clear previous results
+            display.innerText = "";
+            loader.style.display = "block";
 
-    resultDiv.innerHTML = "";
-    loader.style.display = "block";
+            try {
+                const msgUint8 = new TextEncoder().encode(password);
+                const hashBuffer = await crypto.subtle.digest('SHA-1', msgUint8);
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
 
-    // This API provides the historical list of hacked companies
-    const targetUrl = `https://api.xposedornot.com/v1/check-email/${email}`;
-    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
+                const prefix = hashHex.slice(0, 5);
+                const suffix = hashHex.slice(5);
 
-    try {
-        const response = await fetch(proxyUrl);
-        const wrapper = await response.json();
-        loader.style.display = "none";
+                const response = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`);
+                const data = await response.text();
 
-        if (wrapper.status.http_code === 200) {
-            const data = JSON.parse(wrapper.contents);
-            const breachList = data.breaches[0]; // The array of company names
+                const lines = data.split('\n');
+                let pwnedCount = 0;
 
-            // Displaying the "Who and Where" of the breach
-            resultDiv.innerHTML = `
-                <h4 style="color:#f87171">⚠️ Data Breach Found!</h4>
-                <p style="font-size: 0.9rem; color: #94a3b8; margin-bottom: 10px;">
-                    Your data was leaked in the following breaches:
-                </p>
-                <div id="list"></div>
-            `;
+                for (let line of lines) {
+                    const [returnedSuffix, count] = line.trim().split(':');
+                    if (returnedSuffix === suffix) {
+                        pwnedCount = parseInt(count);
+                        break;
+                    }
+                }
 
-            const listContainer = document.getElementById('list');
-            breachList.forEach(company => {
-                const div = document.createElement('div');
-                div.className = 'breach-item';
-                div.innerHTML = `🚩 <strong>${company}</strong>`;
-                listContainer.appendChild(div);
-            });
+                // Hide loader before showing result
+                loader.style.display = "none";
 
-        } else if (wrapper.status.http_code === 404) {
-            resultDiv.innerHTML = `<p class="safe">✅ No breaches found for this email.</p>`;
+                if (pwnedCount > 0) {
+                    display.style.color = "#f87171"; // Reddish
+                    display.innerText = `⚠️ This password has appeared in ${pwnedCount.toLocaleString()} data breaches!`;
+                } else {
+                    display.style.color = "#4ade80"; // Greenish
+                    display.innerText = "✅ This password was not found in any known leaks.";
+                }
+
+            } catch (error) {
+                loader.style.display = "none";
+                display.style.color = "white";
+                display.innerText = "Error connecting to the breach database.";
+                console.error(error);
+            }
         }
-    } catch (error) {
-        loader.style.display = "none";
-        resultDiv.innerHTML = `<p style="color:red">Connection Error. Check your internet.</p>`;
-    }
-}
+        // Get the input element
+        const passwordInput = document.getElementById('passwordInput');
+
+        // Add the event listener for 'keypress' or 'keydown'
+        passwordInput.addEventListener('keydown', function (event) {
+            // Check if the key pressed was 'Enter'
+            if (event.key === 'Enter') {
+                // Prevent the default form submission (if any)
+                event.preventDefault();
+
+                // Trigger the checkBreach function
+                checkBreach();
+            }
+        });
     </script>
 </body>
 
-
 </html>
-
-
-
-
-
-
-
-
-
-
-
